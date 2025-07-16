@@ -3,20 +3,62 @@ import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Set
 // Remember to rename these classes and interfaces!
 
 interface MorningIntentionSettings {
-	apiKey: string;
-	aiProvider: 'openai' | 'grok';
-	customPrompts: string[];
+	intentionLibrary: string[];
 }
 
 const DEFAULT_SETTINGS: MorningIntentionSettings = {
-	apiKey: '',
-	aiProvider: 'grok',
-	customPrompts: [
-		'What is one thing I want to focus on today to bring me closer to my goals?',
-		'How can I show kindness to myself and others today?',
-		'What would make today feel meaningful and fulfilling?',
-		'What energy do I want to bring into my day?',
-		'How can I practice gratitude and mindfulness today?'
+	intentionLibrary: [
+		"What are my top 3 priorities for today?",
+		"What is my why or purpose behind these priorities? How can I remind myself of this throughout the day?",
+		"What does my day need to look like for me to feel balanced?",
+		"What specific actions can I take today to move me closer to my long-term goals?",
+		"How can I make today 1% better than yesterday?",
+		"What were my wins from yesterday?",
+		"How did I manage my time yesterday? What changes can I make to manage my time better today?",
+		"What's one thing I'm proud of accomplishing yesterday?",
+		"What is one thing I can do today that will make me feel accomplished?",
+		"What's one obstacle I encountered yesterday? How did I overcome it?",
+		"What lesson did I learn yesterday that I can bring into today?",
+		"What does my best look like today? How much am I able to give to the day?",
+		"What distractions do I need to be mindful of today? How can I limit them as much as possible?",
+		"How can I approach challenges or setbacks with a growth mindset today?",
+		"What positive impact can I make on others today, no matter how small?",
+		"How can I be 1% more efficient and productive today? What tools can I use to help me achieve this?",
+		"What small step can I take today to improve a skill that directly aligns with my long-term goals?",
+		"What is my intention for today?",
+		"How do I want my day to go? How can I make this happen?",
+		"How would I like to feel by the end of today? How can I make this happen?",
+		"How am I feeling mentally, physically and emotionally?",
+		"What specific challenges or mini-goals do I have coming up? How can I ensure I'm at my best to handle these?",
+		"How can I invite more joy and playfulness into my day?",
+		"What is currently feeling good? What feels a little off?",
+		"How can I make the rest of my day 1% better?",
+		"How did I manage to take care of myself yesterday?",
+		"What can I do to take better care of myself today, even if it's just 1% more?",
+		"What has been triggering my overwhelm lately? How can I overcome this next time?",
+		"What have been my biggest stressors? How can I effectively handle these next time?",
+		"What can I do later that will help me decompress after a long, busy day?",
+		"How can I support my physical health today? How will I be moving my body today?",
+		"How can I support my mental health today?",
+		"How can I support my emotional health today?",
+		"What's an affirmation I can use today when I am struggling?",
+		"What would make today great?",
+		"How will I make my day great?",
+		"List 3 things you are grateful for today",
+		"What are 3 small, everyday things that I often take for granted but am grateful for today?",
+		"Write down 5 things in nature you're grateful for",
+		"List 3 things you get to do today",
+		"What is something I get to do today that I've always wanted to do?",
+		"Who is someone I've met recently who had a positive impact on my life?",
+		"Name someone who you get to spend time with today",
+		"What is one thing I am looking forward to today?",
+		"What is one thing I'm grateful for?",
+		"List 5 things that are currently making you smile",
+		"List a sight, a sound and a feeling that reminds you that life is amazing",
+		"Write about something that made you look forward to waking up today",
+		"What is one thing that is making me happy today?",
+		"Write down a reason why your life today is already great",
+		"What is an unforgettable memory that makes me feel happy",
 	]
 }
 
@@ -28,7 +70,7 @@ export default class MorningIntentionPlugin extends Plugin {
 		await this.loadSettings();
 
 		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Generate Intention Prompt', (evt: MouseEvent) => {
+		const ribbonIconEl = this.addRibbonIcon('dice', 'Get Random Morning Intention', (evt: MouseEvent) => {
 			// Called when the user clicks the icon.
 			this.generateMorningIntention();
 		});
@@ -111,36 +153,17 @@ export default class MorningIntentionPlugin extends Plugin {
 	}
 
 	async generateMorningIntention() {
-		if (!this.settings.apiKey) {
-			const providerName = this.settings.aiProvider === 'openai' ? 'OpenAI' : 'Grok';
-			
-			// Create a notice with a clickable link to settings
-			const notice = new Notice('', 0); // 0 = permanent notice until dismissed
-			notice.noticeEl.innerHTML = `Please set your ${providerName} API key in <a href="#" style="color: var(--interactive-accent); text-decoration: underline;">plugin settings</a>.`;
-			
-			// Add click handler to open settings
-			notice.noticeEl.querySelector('a')?.addEventListener('click', (e) => {
-				e.preventDefault();
-				notice.hide();
-				this.openPluginSettings();
-			});
-			
-			return;
-		}
-
 		try {
-			new Notice('Generating your morning intention...');
 			
-			// Create a random prompt from custom prompts or use AI to generate one
-			const randomPrompt = this.getRandomPrompt();
-			const intention = await this.callAI(randomPrompt);
+			// Get a random intention from the list
+			const intention = this.getRandomIntention();
 			
-			// Create or update today's daily note with the intention
+			// add intention to daily note
 			await this.addIntentionToDaily(intention);
 			
 		} catch (error) {
 			console.error('Error generating morning intention:', error);
-			new Notice('Failed to generate morning intention. Check your API key and internet connection.');
+			new Notice('Failed to add morning intention to daily note.');
 		}
 	}
 
@@ -152,110 +175,91 @@ export default class MorningIntentionPlugin extends Plugin {
 		this.app.setting.openTabById('AI-daily-morning-intentions');
 	}
 
-	getRandomPrompt(): string {
-		const prompts = this.settings.customPrompts;
-		const randomIndex = Math.floor(Math.random() * prompts.length);
-		return prompts[randomIndex];
-	}
-
-	async callAI(prompt: string): Promise<string> {
-		if (this.settings.aiProvider === 'grok') {
-			return this.callGrok(prompt);
-		} else {
-			return this.callOpenAI(prompt);
-		}
-	}
-
-	async callOpenAI(prompt: string): Promise<string> {
-		const response = await fetch('https://api.openai.com/v1/chat/completions', {
-			method: 'POST',
-			headers: {
-				'Authorization': `Bearer ${this.settings.apiKey}`,
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({
-				model: 'gpt-3.5-turbo',
-				messages: [
-					{
-						role: 'system',
-						content: 'You are a mindful assistant that helps people set positive daily intentions. Respond with a thoughtful, personalized intention in 1-2 sentences that is actionable and inspiring.'
-					},
-					{
-						role: 'user',
-						content: prompt
-					}
-				],
-				max_tokens: 100,
-				temperature: 0.7,
-			}),
-		});
-
-		if (!response.ok) {
-			throw new Error(`OpenAI API request failed: ${response.status}`);
-		}
-
-		const data = await response.json();
-		return data.choices[0].message.content.trim();
-	}
-
-	async callGrok(prompt: string): Promise<string> {
-		const response = await fetch('https://api.x.ai/v1/chat/completions', {
-			method: 'POST',
-			headers: {
-				'Authorization': `Bearer ${this.settings.apiKey}`,
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({
-				model: 'grok-beta',
-				messages: [
-					{
-						role: 'system',
-						content: 'You are a mindful assistant that helps people set positive daily intentions. Respond with a thoughtful, personalized intention in 1-2 sentences that is actionable and inspiring.'
-					},
-					{
-						role: 'user',
-						content: prompt
-					}
-				],
-				max_tokens: 100,
-				temperature: 0.7,
-			}),
-		});
-
-		if (!response.ok) {
-			throw new Error(`Grok API request failed: ${response.status}`);
-		}
-
-		const data = await response.json();
-		return data.choices[0].message.content.trim();
+	getRandomIntention(): string {
+		const intentions = this.settings.intentionLibrary;
+		const randomIndex = Math.floor(Math.random() * intentions.length);
+		return intentions[randomIndex];
 	}
 
 	async addIntentionToDaily(intention: string) {
-		const today = new Date();
-		const dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
-		const fileName = `${dateStr}.md`;
-		
 		try {
-			// Try to get existing daily note
-			const dailyNote = this.app.vault.getAbstractFileByPath(fileName);
+			// Use Obsidian's core Daily Notes plugin API
+			// @ts-ignore - accessing core plugin internals
+			const dailyNotesPlugin = this.app.internalPlugins.plugins['daily-notes'];
 			
-			if (dailyNote instanceof TFile) {
-				// File exists, append to it
-				const content = await this.app.vault.read(dailyNote);
-				const newContent = content + `\n\n## Morning Intention\n${intention}\n`;
-				await this.app.vault.modify(dailyNote, newContent);
+			if (!dailyNotesPlugin || !dailyNotesPlugin.enabled) {
+				new Notice('Daily Notes core plugin is not enabled. Please enable it in Settings > Core plugins.');
+				return;
+			}
+
+			// Get today's date in the format expected by daily notes
+			const today = new Date();
+			const dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+			
+			// Get daily note settings
+			// @ts-ignore - accessing plugin settings
+			const dailyNotesSettings = dailyNotesPlugin.instance?.options || {};
+			const format = dailyNotesSettings.format || 'YYYY-MM-DD';
+			const folder = dailyNotesSettings.folder || '';
+			const template = dailyNotesSettings.template || '';
+			
+			// Format the filename according to daily notes settings
+			let fileName: string;
+			if (format === 'YYYY-MM-DD') {
+				fileName = dateStr;
 			} else {
+				// Use moment-style formatting if available, otherwise fallback to ISO
+				fileName = dateStr; // Simplified for now
+			}
+			
+			const fullPath = folder ? `${folder}/${fileName}.md` : `${fileName}.md`;
+			console.log('Daily note path:', fullPath);
+			
+			// Try to get existing daily note
+			let dailyNote = this.app.vault.getAbstractFileByPath(fullPath) as TFile;
+			
+			if (!dailyNote) {
 				// Create new daily note
-				const newContent = `# ${dateStr}\n\n## Morning Intention\n${intention}\n`;
-				await this.app.vault.create(fileName, newContent);
+				let content = '';
+				
+				// If there's a template, use it
+				if (template) {
+					const templateFile = this.app.vault.getAbstractFileByPath(template) as TFile;
+					if (templateFile) {
+						content = await this.app.vault.read(templateFile);
+					}
+				}
+				
+				// If no template content, create basic structure
+				if (!content.trim()) {
+					content = `# ${fileName}\n\n`;
+				}
+				
+				// Add the morning intention
+				content += `## Morning Intention\n${intention}\n`;
+				
+				dailyNote = await this.app.vault.create(fullPath, content);
+			} else {
+				// Read existing content and handle intention section
+				const content = await this.app.vault.read(dailyNote);
+				
+				// Check if morning intention already exists
+				if (content.includes('## Morning Intention')) {
+					// Don't do anything if morning intention already exists
+					new Notice('Morning intention already exists in your daily note!');
+					return;
+				} else {
+					// Add new morning intention section
+					const newContent = content + `\n\n## Morning Intention\n${intention}\n`;
+					await this.app.vault.modify(dailyNote, newContent);
+				}
 			}
 			
 			new Notice('Morning intention added to your daily note!');
 			
 		} catch (error) {
 			console.error('Error adding intention to daily note:', error);
-			// Fallback: just show the intention in a notice
-			new Notice(`Your intention: ${intention}`);
+			new Notice('Failed to add morning intention to daily note. Please ensure the Daily Notes plugin is enabled.');
 		}
 	}
 
@@ -268,6 +272,9 @@ export default class MorningIntentionPlugin extends Plugin {
 		// Check if the created file is a daily note
 		if (this.isDailyNote(file)) {
 			new Notice('New daily note created');
+
+			// automatically generate an intention for the new daily note
+			this.generateMorningIntention();
 		}
 	}
 
@@ -320,44 +327,33 @@ class MorningIntentionTab extends PluginSettingTab {
 
 		containerEl.empty();
 
+		// Create setting without the text area first
 		new Setting(containerEl)
-			.setName('AI Provider')
-			.setDesc('Choose which AI service to use for generating intentions')
-			.addDropdown(dropdown => dropdown
-				.addOption('openai', 'OpenAI (ChatGPT)')
-				.addOption('grok', 'Grok (xAI)')
-				.setValue(this.plugin.settings.aiProvider)
-				.onChange(async (value: 'openai' | 'grok') => {
-					this.plugin.settings.aiProvider = value;
-					await this.plugin.saveSettings();
-					// Refresh the display to update the API key description
-					this.display();
-				}));
-
-		const apiKeyDesc = this.plugin.settings.aiProvider === 'openai' 
-			? 'Enter your OpenAI API key (get one at https://platform.openai.com/api-keys)'
-			: 'Enter your Grok API key (get one at https://console.x.ai/)';
-
-		new Setting(containerEl)
-			.setName('API Key')
-			.setDesc(apiKeyDesc)
-			.addText(text => text
-				.setPlaceholder('sk-...')
-				.setValue(this.plugin.settings.apiKey)
-				.onChange(async (value) => {
-					this.plugin.settings.apiKey = value;
-					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
-			.setName('Custom Prompts')
-			.setDesc('Add your own intention prompts (one per line)')
-			.addTextArea(text => text
-				.setPlaceholder('Enter custom prompts...')
-				.setValue(this.plugin.settings.customPrompts.join('\n'))
-				.onChange(async (value) => {
-					this.plugin.settings.customPrompts = value.split('\n').filter(p => p.trim());
-					await this.plugin.saveSettings();
-				}));
+			.setName('Library of Intentions')
+			.setDesc('Add your own morning intentions (one per line). These will be randomly selected to be inserted into your Daily Note.');
+		
+		// Create a separate container for the text area below the description
+		const textAreaContainer = containerEl.createDiv();
+		textAreaContainer.style.marginTop = '10px';
+		
+		const textArea = textAreaContainer.createEl('textarea');
+		textArea.placeholder = 'Today I choose to focus on what brings me joy...\nI will approach challenges with curiosity...\nI am grateful for this new day...';
+		textArea.value = this.plugin.settings.intentionLibrary.join('\n');
+		textArea.style.width = '100%';
+		textArea.style.minHeight = '200px';
+		textArea.style.fontFamily = 'var(--font-monospace)';
+		textArea.style.fontSize = 'var(--font-ui-small)';
+		textArea.style.padding = '8px';
+		textArea.style.border = '1px solid var(--background-modifier-border)';
+		textArea.style.borderRadius = '4px';
+		textArea.style.backgroundColor = 'var(--background-primary)';
+		textArea.style.color = 'var(--text-normal)';
+		textArea.style.resize = 'vertical';
+		
+		textArea.addEventListener('input', async (e) => {
+			const target = e.target as HTMLTextAreaElement;
+			this.plugin.settings.intentionLibrary = target.value.split('\n').filter(i => i.trim());
+			await this.plugin.saveSettings();
+		});
 	}
 }

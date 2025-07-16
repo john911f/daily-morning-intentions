@@ -1,9 +1,9 @@
 {
-	"id": "AI-daily-morning-intentions",
-	"name": "AI Daily Morning Intentions",
+	"id": "daily-morning-intentions",
+	"name": "Daily Morning Intentions",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "This plugin helps you set daily intentions using AI.",
+	"description": "This plugin automatically generates a positive daily intention for you to start your day with. It uses the Grok AI API to generate personalized intentions based on your input.",
 	"author": "John Fang",
 	"isDesktopOnly": false
 }
