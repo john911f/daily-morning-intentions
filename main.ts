@@ -7,12 +7,16 @@ interface MorningIntentionSettings {
 	intentionPlacement: 'first' | 'last';
 	includeHeader: boolean;
 	cursorHotkey: string;
+	headerText: string;
+	headerLevel: number;
 }
 
 const DEFAULT_SETTINGS: MorningIntentionSettings = {
 	intentionPlacement: 'last',
 	includeHeader: true,
 	cursorHotkey: 'Mod+Shift+I',
+	headerText: 'Morning Intention',
+	headerLevel: 2,
 	intentionLibrary: [
 		"What are my top 3 priorities for today?",
 		"What is my why or purpose behind these priorities? How can I remind myself of this throughout the day?",
@@ -171,14 +175,14 @@ export default class MorningIntentionPlugin extends Plugin {
 			
 			// Get current cursor position
 			const cursor = editor.getCursor();
-			
-			// Determine what text to insert based on header setting
-			let textToInsert: string;
-			if (this.settings.includeHeader) {
-				textToInsert = `## Morning Intention\n${intention}`;
-			} else {
-				textToInsert = intention;
-			}
+					// Determine what text to insert based on header setting
+		let textToInsert: string;
+		if (this.settings.includeHeader) {
+			const headerPrefix = '#'.repeat(this.settings.headerLevel);
+			textToInsert = `${headerPrefix} ${this.settings.headerText}\n${intention}`;
+		} else {
+			textToInsert = intention;
+		}
 			
 			// Insert the intention at cursor position
 			editor.replaceRange(textToInsert, cursor);
@@ -196,6 +200,53 @@ export default class MorningIntentionPlugin extends Plugin {
 		} catch (error) {
 			console.error('Error inserting intention at cursor:', error);
 			new Notice('Failed to insert morning intention.');
+		}
+	}
+
+	async setCursorAfterIntention(file: TFile, intention: string) {
+		try {
+			// Open the file in the active workspace
+			const leaf = this.app.workspace.getLeaf(false);
+			await leaf.openFile(file);
+			
+			// Get the editor view
+			const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+			if (!view) return;
+			
+			const editor = view.editor;
+			const content = editor.getValue();
+			
+			// Find the line where the intention was inserted
+			const lines = content.split('\n');
+			let targetLine = -1;
+			
+			// Look for the intention text in the content
+			for (let i = 0; i < lines.length; i++) {
+				if (lines[i].includes(intention)) {
+					targetLine = i;
+					break;
+				}
+			}
+			
+			if (targetLine >= 0) {
+				// Set cursor to the end of the intention line + 1 (next line)
+				const nextLine = targetLine + 1;
+				let targetColumn = 0;
+				
+				// If there's a next line, position at the end of it, otherwise create a new line
+				if (nextLine < lines.length) {
+					targetColumn = lines[nextLine].length;
+				} else {
+					// Add a new line after the intention
+					editor.replaceRange('\n', { line: targetLine, ch: lines[targetLine].length });
+					targetColumn = 0;
+				}
+				
+				// Set the cursor position
+				editor.setCursor({ line: nextLine, ch: targetColumn });
+			}
+		} catch (error) {
+			console.error('Error setting cursor position:', error);
 		}
 	}
 
@@ -267,7 +318,9 @@ export default class MorningIntentionPlugin extends Plugin {
 				const content = await this.app.vault.read(dailyNote);
 				
 				// Check if morning intention already exists
-				const hasHeader = content.includes('## Morning Intention');
+				const headerPrefix = '#'.repeat(this.settings.headerLevel);
+				const expectedHeader = `${headerPrefix} ${this.settings.headerText}`;
+				const hasHeader = content.includes(expectedHeader);
 				let hasIntention = false;
 				
 				if (hasHeader) {
@@ -306,23 +359,48 @@ export default class MorningIntentionPlugin extends Plugin {
 						const afterLines = lines.slice(insertIndex);
 						
 						let intentionLines: string[];
+						// Check if we need spacing - add blank line only if there's content after the insertion point
+						const needsSpacingAfter = afterLines.some(line => line.trim() !== '');
+						
 						if (this.settings.includeHeader) {
-							intentionLines = ['', '## Morning Intention', intention, ''];
+							const headerPrefix = '#'.repeat(this.settings.headerLevel);
+							const header = `${headerPrefix} ${this.settings.headerText}`;
+							intentionLines = needsSpacingAfter ? 
+								[header, intention, ''] : 
+								[header, intention];
 						} else {
-							intentionLines = ['', intention, ''];
+							intentionLines = needsSpacingAfter ? 
+								[intention, ''] : 
+								[intention];
 						}
 						
 						newContent = [...beforeLines, ...intentionLines, ...afterLines].join('\n');
 					} else {
 						// Append at the end (default behavior)
+						// Check if the content is empty or just whitespace
+						const hasExistingContent = content.trim() !== '';
+						
 						if (this.settings.includeHeader) {
-							newContent = content + `\n\n## Morning Intention\n${intention}\n`;
+							const headerPrefix = '#'.repeat(this.settings.headerLevel);
+							const header = `${headerPrefix} ${this.settings.headerText}`;
+							if (hasExistingContent) {
+								newContent = content + `\n\n${header}\n${intention}`;
+							} else {
+								newContent = `${header}\n${intention}`;
+							}
 						} else {
-							newContent = content + `\n\n${intention}\n`;
+							if (hasExistingContent) {
+								newContent = content + `\n\n${intention}`;
+							} else {
+								newContent = intention;
+							}
 						}
 					}
 					
 					await this.app.vault.modify(dailyNote, newContent);
+					
+					// Set cursor position after the inserted intention
+					this.setCursorAfterIntention(dailyNote, intention);
 				}
 			}
 			
@@ -414,7 +492,8 @@ class MorningIntentionTab extends PluginSettingTab {
 		
 		const donationDesc = containerEl.createDiv();
 		donationDesc.innerHTML = `
-			<p>If you find this plugin helpful, consider supporting its development:</p>
+
+			<p>Loving this plugin? Your support keeps the good vibes and updates coming! 😄 Consider tossing a small donation my way to fuel more awesome features. Thank you! 🙌</p>
 			<div style="display: flex; gap: 10px; margin: 10px 0;">
 				<a href="https://buymeacoffee.com/johnfang" target="_blank" style="text-decoration: none;">
 					<button style="background: #FFDD00; color: #000; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">☕ Buy Me a Coffee</button>
@@ -444,11 +523,40 @@ class MorningIntentionTab extends PluginSettingTab {
 		// Include header setting
 		new Setting(containerEl)
 			.setName('Include Header')
-			.setDesc('Whether to include the "## Morning Intention" header when inserting the intention.')
+			.setDesc('Whether to include a header when inserting the intention.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.includeHeader)
 				.onChange(async (value: boolean) => {
 					this.plugin.settings.includeHeader = value;
+					await this.plugin.saveSettings();
+				}));
+
+		// Header text setting
+		new Setting(containerEl)
+			.setName('Header Text')
+			.setDesc('Custom text for the intention header.')
+			.addText(text => text
+				.setPlaceholder('Morning Intention')
+				.setValue(this.plugin.settings.headerText)
+				.onChange(async (value: string) => {
+					this.plugin.settings.headerText = value;
+					await this.plugin.saveSettings();
+				}));
+
+		// Header level setting
+		new Setting(containerEl)
+			.setName('Header Level')
+			.setDesc('Choose the heading level for the intention header (H1-H6).')
+			.addDropdown(dropdown => dropdown
+				.addOption('1', 'H1 (#)')
+				.addOption('2', 'H2 (##)')
+				.addOption('3', 'H3 (###)')
+				.addOption('4', 'H4 (####)')
+				.addOption('5', 'H5 (#####)')
+				.addOption('6', 'H6 (######)')
+				.setValue(this.plugin.settings.headerLevel.toString())
+				.onChange(async (value: string) => {
+					this.plugin.settings.headerLevel = parseInt(value);
 					await this.plugin.saveSettings();
 				}));
 
