@@ -216,29 +216,35 @@ export default class MorningIntentionPlugin extends Plugin {
 			console.log('Daily note path:', fullPath);
 			
 			// Try to get existing daily note
-			let dailyNote = this.app.vault.getAbstractFileByPath(fullPath) as TFile;
+			const dailyNote = this.app.vault.getAbstractFileByPath(fullPath) as TFile;
 			
 			if (!dailyNote) {
-				// Create new daily note
-				let content = '';
+
+				// If daily note doesn't exist, show notification
+				new Notice(`Daily note for ${fileName} does not exist. Please create it first or ensure Daily Notes plugin is configured correctly.`);
+				return;
+
+
+				// // Create new daily note
+				// let content = '';
 				
-				// If there's a template, use it
-				if (template) {
-					const templateFile = this.app.vault.getAbstractFileByPath(template) as TFile;
-					if (templateFile) {
-						content = await this.app.vault.read(templateFile);
-					}
-				}
+				// // If there's a template, use it
+				// if (template) {
+				// 	const templateFile = this.app.vault.getAbstractFileByPath(template) as TFile;
+				// 	if (templateFile) {
+				// 		content = await this.app.vault.read(templateFile);
+				// 	}
+				// }
 				
-				// If no template content, create basic structure
-				if (!content.trim()) {
-					content = `# ${fileName}\n\n`;
-				}
+				// // If no template content, create basic structure
+				// if (!content.trim()) {
+				// 	content = `# ${fileName}\n\n`;
+				// }
 				
-				// Add the morning intention
-				content += `## Morning Intention\n${intention}\n`;
+				// // Add the morning intention
+				// content += `## Morning Intention\n${intention}\n`;
 				
-				dailyNote = await this.app.vault.create(fullPath, content);
+				// dailyNote = await this.app.vault.create(fullPath, content);
 			} else {
 				// Read existing content and handle intention section
 				const content = await this.app.vault.read(dailyNote);
@@ -271,7 +277,6 @@ export default class MorningIntentionPlugin extends Plugin {
 
 		// Check if the created file is a daily note
 		if (this.isDailyNote(file)) {
-			new Notice('New daily note created');
 
 			// automatically generate an intention for the new daily note
 			this.generateMorningIntention();
@@ -279,14 +284,42 @@ export default class MorningIntentionPlugin extends Plugin {
 	}
 
 	isDailyNote(file: TFile): boolean {
-		// Check for common daily note patterns
-		const commonDatePatterns = [
-			/^\d{4}-\d{2}-\d{2}$/, // YYYY-MM-DD
-			/^\d{2}-\d{2}-\d{4}$/, // MM-DD-YYYY
-			/^\d{4}\d{2}\d{2}$/,   // YYYYMMDD
-		];
-		
-		return commonDatePatterns.some(pattern => pattern.test(file.basename));
+		try {
+			// Use Obsidian's core Daily Notes plugin API
+			// @ts-ignore - accessing core plugin internals
+			const dailyNotesPlugin = this.app.internalPlugins.plugins['daily-notes'];
+			
+			if (!dailyNotesPlugin || !dailyNotesPlugin.enabled) {
+				return false;
+			}
+
+			// Get daily note settings
+			// @ts-ignore - accessing plugin settings
+			const dailyNotesSettings = dailyNotesPlugin.instance?.options || {};
+			const format = dailyNotesSettings.format || 'YYYY-MM-DD';
+			const folder = dailyNotesSettings.folder || '';
+			
+			// Get today's date and format it according to daily notes settings
+			const today = new Date();
+			const dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+			
+			// Format the filename according to daily notes settings
+			let expectedFileName: string;
+			if (format === 'YYYY-MM-DD') {
+				expectedFileName = dateStr;
+			} else {
+				// Use moment-style formatting if available, otherwise fallback to ISO
+				expectedFileName = dateStr; // Simplified for now
+			}
+			
+			const expectedPath = folder ? `${folder}/${expectedFileName}.md` : `${expectedFileName}.md`;
+			
+			// Check if this file matches the expected daily note path
+			return file.path === expectedPath;
+		} catch (error) {
+			console.error('Error checking if file is daily note:', error);
+			return false;
+		}
 	}
 
 	async loadSettings() {
