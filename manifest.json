@@ -1,0 +1,9 @@
+{
+	"id": "AI-daily-morning-intentions",
+	"name": "AI Daily Morning Intentions",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "This plugin helps you set daily intentions using AI.",
+	"author": "John Fang",
+	"isDesktopOnly": false
+}
