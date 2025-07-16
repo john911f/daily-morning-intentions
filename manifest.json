@@ -3,7 +3,12 @@
 	"name": "Daily Morning Intentions",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "This plugin automatically generates a positive daily intention for you to start your day with. It uses the Grok AI API to generate personalized intentions based on your input.",
+	"description": "Automatically inserts inspiring morning intentions into your daily notes. Customizable intention library, placement options, and hotkey support for a mindful start to your day.",
 	"author": "John Fang",
+	"authorUrl": "https://github.com/john911f",
+	"fundingUrl": {
+		"Buy Me a Coffee": "https://buymeacoffee.com/johnfang",
+		"Ko-fi": "https://ko-fi.com/johnfang"
+	},
 	"isDesktopOnly": false
 }

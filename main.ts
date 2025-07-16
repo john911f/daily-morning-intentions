@@ -409,6 +409,25 @@ class MorningIntentionTab extends PluginSettingTab {
 
 		containerEl.empty();
 
+		// Support section
+		containerEl.createEl('h2', {text: 'Support Development'});
+		
+		const donationDesc = containerEl.createDiv();
+		donationDesc.innerHTML = `
+			<p>If you find this plugin helpful, consider supporting its development:</p>
+			<div style="display: flex; gap: 10px; margin: 10px 0;">
+				<a href="https://buymeacoffee.com/johnfang" target="_blank" style="text-decoration: none;">
+					<button style="background: #FFDD00; color: #000; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">☕ Buy Me a Coffee</button>
+				</a>
+				<a href="https://ko-fi.com/johnfang" target="_blank" style="text-decoration: none;">
+					<button style="background: #FF5722; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">🎁 Ko-fi</button>
+				</a>
+			</div>
+		`;
+
+		containerEl.createEl('hr');
+		containerEl.createEl('h2', {text: 'Plugin Settings'});
+
 		// Intention placement setting
 		new Setting(containerEl)
 			.setName('Intention Placement')

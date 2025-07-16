@@ -1,16 +1,41 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "daily-morning-intentions",
 	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "Automatically inserts inspiring morning intentions into your daily notes. Customizable intention library, placement options, and hotkey support for a mindful start to your day.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
-	"keywords": [],
-	"author": "",
+	"keywords": [
+		"obsidian",
+		"plugin",
+		"daily-notes",
+		"intentions",
+		"mindfulness",
+		"morning-routine"
+	],
+	"author": "John Fang <johnfang.tech@yahoo.com>",
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/john911f/AI-daily-morning-intentions.git"
+	},
+	"funding": [
+		{
+			"type": "buymeacoffee",
+			"url": "https://buymeacoffee.com/johnfang"
+		},
+		{
+			"type": "paypal",
+			"url": "https://paypal.me/johnfang"
+		},
+		{
+			"type": "kofi",
+			"url": "https://ko-fi.com/johnfang"
+		}
+	],
 	"devDependencies": {
 		"@types/node": "^16.11.6",
 		"@typescript-eslint/eslint-plugin": "5.29.0",

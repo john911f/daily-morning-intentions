@@ -1,53 +1,84 @@
-# Obsidian Sample Plugin
+# Daily Morning Intentions - Obsidian Plugin
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+A mindful way to start your day! This plugin automatically inserts inspiring morning intentions into your daily notes, helping you set a positive tone for each day.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+## Features
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open Sample Modal" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+- **Automatic Daily Note Integration**: Automatically adds intentions when you create new daily notes
+- **Cursor Insertion**: Insert intentions anywhere with a simple command and hotkey
+- **Customizable Intention Library**: Add, edit, and manage your own collection of meaningful prompts
+- **Flexible Placement**: Choose to insert intentions at the beginning or end of your daily notes
+- **Header Control**: Toggle the "Morning Intention" header on/off
+- **Hotkey Support**: Customize keyboard shortcuts for quick access
+- **Duplicate Prevention**: Won't overwrite existing intentions
 
-## First time developing plugins?
+## Default Intention Examples
 
-Quick starting guide for new plugin devs:
+The plugin comes with 47+ thoughtful prompts including:
+- "What are my top 3 priorities for today?"
+- "How can I make today 1% better than yesterday?"
+- "What am I grateful for today?"
+- "How do I want to feel by the end of today?"
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+## Usage
 
-## Releasing new releases
+### Automatic Mode
+- Create a new daily note and an intention will be automatically inserted
+- Requires the Daily Notes core plugin to be enabled
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+### Manual Mode
+- Use Command Palette: "Insert random morning intention at cursor"
+- Use the default hotkey: `Ctrl/Cmd + Shift + I`
+- Click the dice icon in the ribbon
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+### Settings
+Access plugin settings to:
+- Customize your intention library
+- Set placement preferences (beginning/end)
+- Toggle headers on/off
+- Configure custom hotkeys
 
-## Adding your plugin to the community plugin list
+## Installation
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+### From Community Plugins (Recommended)
+1. Open Obsidian Settings
+2. Go to Community Plugins
+3. Search for "Daily Morning Intentions"
+4. Install and enable
 
-## How to use
+### Manual Installation
+1. Download the latest release files
+2. Copy to your vault's `.obsidian/plugins/daily-morning-intentions/` folder
+3. Enable in Community Plugins settings
 
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
+## Support Development
+
+If this plugin helps you start your days more mindfully, consider supporting its development:
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/johnfang)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-FF5722?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/johnfang)
+
+Your support helps maintain and improve this plugin!
+
+## Configuration
+
+### Daily Notes Integration
+- Requires the Daily Notes core plugin to be enabled
+- Respects your Daily Notes folder and format settings
+- Works with custom date formats
+
+### Hotkey Customization
+- Default: `Ctrl/Cmd + Shift + I` for cursor insertion
+- Fully customizable in plugin settings
+- Leave empty to disable hotkeys
+
+## Contributing
+
+Found a bug or have a feature request? Please open an issue on GitHub!
+
+## License
+
+MIT License - feel free to use and modify as needed.
 - `npm i` or `yarn` to install dependencies.
 - `npm run dev` to start compilation in watch mode.
 
