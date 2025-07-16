@@ -23,3 +23,6 @@ data.json
 
 # Helper files
 create_symlink.ps1
+
+# Secrets
+.secret
