@@ -1,12 +1,18 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
+import { App, Editor, MarkdownView, Notice, Plugin, PluginSettingTab, Setting, TFile, Modifier, Hotkey } from 'obsidian';
 
 // Remember to rename these classes and interfaces!
 
 interface MorningIntentionSettings {
 	intentionLibrary: string[];
+	intentionPlacement: 'first' | 'last';
+	includeHeader: boolean;
+	cursorHotkey: string;
 }
 
 const DEFAULT_SETTINGS: MorningIntentionSettings = {
+	intentionPlacement: 'last',
+	includeHeader: true,
+	cursorHotkey: 'Mod+Shift+I',
 	intentionLibrary: [
 		"What are my top 3 priorities for today?",
 		"What is my why or purpose behind these priorities? How can I remind myself of this throughout the day?",
@@ -69,66 +75,19 @@ export default class MorningIntentionPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
-		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Get Random Morning Intention', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			this.generateMorningIntention();
-		});
-		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class');
-
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status Bar Text');
-
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'sample-editor-command',
-			name: 'Sample editor command',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection());
-				editor.replaceSelection('Sample Editor Command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-sample-modal-complex',
-			name: 'Open sample modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-			}
-		});
-
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new MorningIntentionTab(this.app, this));
 
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
+		// Add command to insert intention at cursor (supports hotkey assignment)
+		this.addCommand({
+			id: 'insert-intention-at-cursor',
+			name: 'Insert random morning intention at cursor',
+			editorCallback: (editor: Editor, view: MarkdownView) => {
+				this.insertIntentionAtCursor(editor);
+			},
+			hotkeys: this.parseHotkey(this.settings.cursorHotkey)
 		});
 
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
 
 		// Listen for file creation events to detect new daily notes
 		this.registerEvent(
@@ -181,6 +140,65 @@ export default class MorningIntentionPlugin extends Plugin {
 		return intentions[randomIndex];
 	}
 
+	parseHotkey(hotkeyString: string): Hotkey[] {
+		if (!hotkeyString || hotkeyString.trim() === '') {
+			return [];
+		}
+
+		try {
+			const parts = hotkeyString.split('+').map(part => part.trim());
+			if (parts.length === 0) return [];
+
+			const key = parts.pop(); // Last part is the key
+			const modifiers = parts as Modifier[]; // Everything else are modifiers
+
+			if (!key) return [];
+
+			return [{
+				modifiers: modifiers,
+				key: key.toLowerCase()
+			}];
+		} catch (error) {
+			console.error('Error parsing hotkey:', hotkeyString, error);
+			return [];
+		}
+	}
+
+	insertIntentionAtCursor(editor: Editor) {
+		try {
+			// Get a random intention from the list
+			const intention = this.getRandomIntention();
+			
+			// Get current cursor position
+			const cursor = editor.getCursor();
+			
+			// Determine what text to insert based on header setting
+			let textToInsert: string;
+			if (this.settings.includeHeader) {
+				textToInsert = `## Morning Intention\n${intention}`;
+			} else {
+				textToInsert = intention;
+			}
+			
+			// Insert the intention at cursor position
+			editor.replaceRange(textToInsert, cursor);
+			
+			// Move cursor to end of inserted text
+			const lines = textToInsert.split('\n');
+			const newCursor = {
+				line: cursor.line + lines.length - 1,
+				ch: lines[lines.length - 1].length
+			};
+			editor.setCursor(newCursor);
+			
+			new Notice('Morning intention inserted at cursor!');
+			
+		} catch (error) {
+			console.error('Error inserting intention at cursor:', error);
+			new Notice('Failed to insert morning intention.');
+		}
+	}
+
 	async addIntentionToDaily(intention: string) {
 		try {
 			// Use Obsidian's core Daily Notes plugin API
@@ -201,7 +219,6 @@ export default class MorningIntentionPlugin extends Plugin {
 			const dailyNotesSettings = dailyNotesPlugin.instance?.options || {};
 			const format = dailyNotesSettings.format || 'YYYY-MM-DD';
 			const folder = dailyNotesSettings.folder || '';
-			const template = dailyNotesSettings.template || '';
 			
 			// Format the filename according to daily notes settings
 			let fileName: string;
@@ -250,13 +267,61 @@ export default class MorningIntentionPlugin extends Plugin {
 				const content = await this.app.vault.read(dailyNote);
 				
 				// Check if morning intention already exists
-				if (content.includes('## Morning Intention')) {
+				const hasHeader = content.includes('## Morning Intention');
+				let hasIntention = false;
+				
+				if (hasHeader) {
+					hasIntention = true;
+				} else if (!this.settings.includeHeader) {
+					// If header is disabled, check if any of our intentions already exist in the content
+					const existingIntentions = this.settings.intentionLibrary.some(intent => 
+						content.includes(intent.trim())
+					);
+					hasIntention = existingIntentions;
+				}
+				
+				if (hasIntention) {
 					// Don't do anything if morning intention already exists
 					new Notice('Morning intention already exists in your daily note!');
 					return;
 				} else {
-					// Add new morning intention section
-					const newContent = content + `\n\n## Morning Intention\n${intention}\n`;
+					// Add new morning intention section based on user preference
+					let newContent: string;
+					if (this.settings.intentionPlacement === 'first') {
+						// Insert at the beginning after any title
+						const lines = content.split('\n');
+						let insertIndex = 0;
+						
+						// Skip the title if it exists (first line starting with #)
+						if (lines[0] && lines[0].startsWith('#')) {
+							insertIndex = 1;
+							// Also skip any empty lines after the title
+							while (insertIndex < lines.length && lines[insertIndex].trim() === '') {
+								insertIndex++;
+							}
+						}
+						
+						// Insert the morning intention
+						const beforeLines = lines.slice(0, insertIndex);
+						const afterLines = lines.slice(insertIndex);
+						
+						let intentionLines: string[];
+						if (this.settings.includeHeader) {
+							intentionLines = ['', '## Morning Intention', intention, ''];
+						} else {
+							intentionLines = ['', intention, ''];
+						}
+						
+						newContent = [...beforeLines, ...intentionLines, ...afterLines].join('\n');
+					} else {
+						// Append at the end (default behavior)
+						if (this.settings.includeHeader) {
+							newContent = content + `\n\n## Morning Intention\n${intention}\n`;
+						} else {
+							newContent = content + `\n\n${intention}\n`;
+						}
+					}
+					
 					await this.app.vault.modify(dailyNote, newContent);
 				}
 			}
@@ -331,22 +396,6 @@ export default class MorningIntentionPlugin extends Plugin {
 	}
 }
 
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		const {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
-	}
-}
-
 class MorningIntentionTab extends PluginSettingTab {
 	plugin: MorningIntentionPlugin;
 
@@ -359,6 +408,45 @@ class MorningIntentionTab extends PluginSettingTab {
 		const {containerEl} = this;
 
 		containerEl.empty();
+
+		// Intention placement setting
+		new Setting(containerEl)
+			.setName('Intention Placement')
+			.setDesc('Choose where to place the morning intention in your daily note.')
+			.addDropdown(dropdown => dropdown
+				.addOption('last', 'Append at the end')
+				.addOption('first', 'Insert at the beginning (after title)')
+				.setValue(this.plugin.settings.intentionPlacement)
+				.onChange(async (value: 'first' | 'last') => {
+					this.plugin.settings.intentionPlacement = value;
+					await this.plugin.saveSettings();
+				}));
+
+		// Include header setting
+		new Setting(containerEl)
+			.setName('Include Header')
+			.setDesc('Whether to include the "## Morning Intention" header when inserting the intention.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.includeHeader)
+				.onChange(async (value: boolean) => {
+					this.plugin.settings.includeHeader = value;
+					await this.plugin.saveSettings();
+				}));
+
+		// Cursor hotkey setting
+		new Setting(containerEl)
+			.setName('Cursor Insertion Hotkey')
+			.setDesc('Hotkey for inserting intention at cursor (format: Mod+Shift+I). Use "Mod" for Ctrl/Cmd, leave empty to disable.')
+			.addText(text => text
+				.setPlaceholder('Mod+Shift+I')
+				.setValue(this.plugin.settings.cursorHotkey)
+				.onChange(async (value: string) => {
+					this.plugin.settings.cursorHotkey = value;
+					await this.plugin.saveSettings();
+					// Show notice that restart is needed for hotkey changes
+					new Notice('Restart Obsidian for hotkey changes to take effect.');
+				}));
+
 
 		// Create setting without the text area first
 		new Setting(containerEl)
