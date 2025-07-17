@@ -14,13 +14,15 @@
 		"daily-notes",
 		"intentions",
 		"mindfulness",
-		"morning-routine"
+		"morning-routine",
+		"morning-pages",
+		"journaling"
 	],
 	"author": "John Fang <johnfang.tech@yahoo.com>",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/john911f/AI-daily-morning-intentions.git"
+		"url": "https://github.com/john911f/daily-morning-intentions.git"
 	},
 	"funding": [
 		{
